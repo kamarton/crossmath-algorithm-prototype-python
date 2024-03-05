@@ -1,7 +1,7 @@
 import random
 
-WIDTH = 10
-HEIGHT = 10
+WIDTH = 20
+HEIGHT = 20
 OPERATORS = ['+', '-', '*', '/']
 
 
@@ -42,6 +42,8 @@ class TableCell:
 class TableLine:
     def __init__(self, cells):
         self.cells = cells
+        self.x = cells[0].x
+        self.y = cells[0].y
 
     def __str__(self):
         return f'{self.cells}'
@@ -55,8 +57,8 @@ class Table:
         self.width = width
         self.height = height
         self.map = self._create_map(width, height)
-        self.table_rows = self._get_rows()
-        self.table_cols = self._get_cols()
+        self.rows = self._get_rows()
+        self.cols = self._get_cols()
 
     def _get_rows(self):
         result = []
@@ -97,9 +99,6 @@ class CrossMath:
     def _gen_operator(self):
         return random.choice(self.operators)
 
-    def _gen_random_row(self):
-        return random.choice(self.table.table_rows)
-
     def _gen_random_expression(self, operator=None):
         while True:
             expression = self._gen_random_expression_free(operator)
@@ -124,10 +123,15 @@ class CrossMath:
         return [operands[0], operator, operands[1], '=', result]
 
     def generate(self):
-        row = self._gen_random_row()
+        lines = []
+        for i in range(3, self.table.height - 3):
+            lines.append(self.table.rows[i])
+        for i in range(3, self.table.width - 3):
+            lines.append(self.table.cols[i])
+        line = random.choice(lines)
         expression = self._gen_random_expression()
         col = random.choice(range(self.table.width - len(expression)))
-        for i, cell in enumerate(row.cells[col:col + len(expression)]):
+        for i, cell in enumerate(line.cells[col:col + len(expression)]):
             cell.set_value(expression[i])
 
 
