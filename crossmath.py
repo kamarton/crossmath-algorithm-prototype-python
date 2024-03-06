@@ -1,4 +1,5 @@
 import random
+import time
 from typing import Tuple, List
 
 from table import Table
@@ -40,27 +41,35 @@ class CrossMath:
         return [operands[0], operator, operands[1], '=', result]
 
     def _get_random_cell_for_next(self) -> Tuple[int, int, int, int]:
+        start_time = time.time()
+        counter = 0
+        cells = self.table.find_not_empty_cells()
+        if len(cells) == 0:
+            cells = [self.table.get_cell(0, 0)]
         while True:
-            cells = self.table.find_not_empty_cells()
-            if not cells:
-                cell_operand = self.table.get_cell(0, 0)
-            else:
-                cell_operand = random.choice(cells)
-            horizontal = random.choice([True, False])
-            if horizontal:
-                if self.table.get_cell(cell_operand.get_x() + 1, cell_operand.get_y()).is_not_empty():
-                    continue
-                if self.table.get_cell(cell_operand.get_x() - 1, cell_operand.get_y()).is_not_empty():
-                    continue
-            else:
-                if self.table.get_cell(cell_operand.get_x(), cell_operand.get_y() + 1).is_not_empty():
-                    continue
-                if self.table.get_cell(cell_operand.get_x(), cell_operand.get_y() - 1).is_not_empty():
-                    continue
-            return cell_operand.get_x(), cell_operand.get_y(), 1 if horizontal else 0, 0 if horizontal else 1
+            counter += 1
+            if time.time() - start_time > 0.005:
+                raise Exception('timeout: ', time.time() - start_time, 'counter: ', counter)
+            cell_operand = random.choice(cells)
+            directions = []
+            if self.table.get_cell(cell_operand.get_x() + 1, cell_operand.get_y()).is_not_empty() is False:
+                directions.append((1, 0))
+            if self.table.get_cell(cell_operand.get_x() - 1, cell_operand.get_y()).is_not_empty() is False:
+                directions.append((-1, 0))
+            if self.table.get_cell(cell_operand.get_x(), cell_operand.get_y() + 1).is_not_empty() is False:
+                directions.append((0, 1))
+            if self.table.get_cell(cell_operand.get_x(), cell_operand.get_y() - 1).is_not_empty() is False:
+                directions.append((0, -1))
+
+            if len(directions) == 0:
+                cells.remove(cell_operand)
+                continue
+            direction = random.choice(directions)
+            return cell_operand.get_x(), cell_operand.get_y(), direction[0], direction[1]
 
     def generate(self):
-        for _ in range(2):
+        start_time = time.time()
+        for _ in range(20):
             x, y, xadd, yadd = self._get_random_cell_for_next()
             expression = self._gen_random_expression()
 
@@ -69,6 +78,7 @@ class CrossMath:
                 cell.set_value(expression_part)
                 x += xadd
                 y += yadd
+            print('time: ', time.time() - start_time)
 
     def print(self):
         self.table.print()

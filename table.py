@@ -1,4 +1,5 @@
 from typing import List
+import pandas
 
 
 class Cell:
@@ -37,21 +38,8 @@ class Cell:
     def get_y(self) -> int:
         return self._y
 
-    def __str__(self):
-        if self._value is None:
-            value = '_'
-        else:
-            value = str(self._value)
-        return value
-
     def __repr__(self):
-        x = str(self._x).rjust(2, ' ')
-        y = str(self._y).rjust(2, ' ')
-        if self._value is None:
-            value = '   '
-        else:
-            value = str(self._value).center(3, ' ')
-        return f'({x} x {y}) | {value} |'
+        return '' if self._value is None else str(self._value)
 
 
 class Table:
@@ -63,11 +51,8 @@ class Table:
         self._max_y: int = 0
 
     def find_not_empty_cells(self) -> List[Cell]:
-        result = []
-        for cell in self._cells:
-            if cell.is_not_empty():
-                result.append(cell)
-        return result
+        # all cells is not empty in this case
+        return self._cells[:]
 
     def get_cell(self, x: int, y: int, empty_cell: bool = True) -> Cell | None:
         for cell in self._cells:
@@ -76,12 +61,15 @@ class Table:
         return TableCell(self, x, y) if empty_cell else None
 
     def print(self):
+        rows = []
         for y in range(self.get_min_y(), self.get_max_y() + 1):
-            row = []
+            cols = []
             for x in range(self.get_min_x(), self.get_max_x() + 1):
                 cell = self.get_cell(x, y)
-                row.append(cell)
-            print(row)
+                cols.append(cell)
+            rows.append(cols)
+        df = pandas.DataFrame(rows)
+        print(df)
 
     def get_min_x(self) -> int:
         return self._min_x
