@@ -5,29 +5,14 @@ import pandas
 class Cell:
     def __init__(self, x: int, y: int, value=None):
         self._value = value
-        self._is_operator: bool = False
-        self._is_operand: bool = False
         self._x: int = x
         self._y: int = y
 
     def set_value(self, value):
         self._value = value
-        self._is_operand = False
-        self._is_operator = False
 
-    def set_operator(self, operator):
-        self.set_value(operator)
-        self._is_operator = True
-
-    def is_operator(self) -> bool:
-        return self._is_operator
-
-    def set_operand(self, operand):
-        self.set_value(operand)
-        self._is_operand = True
-
-    def is_operand(self) -> bool:
-        return self._is_operand
+    def get_value(self):
+        return self._value
 
     def is_not_empty(self) -> bool:
         return self._value is not None
@@ -50,15 +35,15 @@ class Table:
         self._max_x: int = 0
         self._max_y: int = 0
 
-    def find_not_empty_cells(self) -> List[Cell]:
-        # all cells is not empty in this case
-        return self._cells[:]
-
     def get_cell(self, x: int, y: int, empty_cell: bool = True) -> Cell | None:
         for cell in self._cells:
             if cell.get_x() == x and cell.get_y() == y:
                 return cell
         return TableCell(self, x, y) if empty_cell else None
+
+    def get_cell_value(self, x: int, y: int) -> int:
+        cell = self.get_cell(x, y)
+        return cell.get_value() if cell is not None else 0
 
     def print(self):
         rows = []
@@ -93,6 +78,13 @@ class Table:
         self._max_x = max(self._max_x, x)
         self._max_y = max(self._max_y, y)
         self._cells.append(cell)
+
+    def clear(self):
+        self._cells.clear()
+        self._min_x = 0
+        self._min_y = 0
+        self._max_x = 0
+        self._max_y = 0
 
 
 class TableCell(Cell):
