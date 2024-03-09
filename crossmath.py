@@ -72,13 +72,38 @@ class CrossMath:
                     result.append(operand3)
                     return result
             elif (values[0] is None or self._is_operand(values[0])) and \
-                    (values[1] is None or self._is_operator(values[1])) and \
+                    (values[1] is None or (
+                            self._is_operator(values[1]) and values[1] in Operators.get_operators_without_eq())) and \
                     (values[2] is None or self._is_operand(values[2])) and \
                     (values[3] is None or values[3] is Operators.EQ) and \
                     (values[4] is None or self._is_operand(values[4])):
                 print('values OK:', values)
+                has_op1 = values[0] is not None
+                has_opr1 = values[1] is not None
+                has_op2 = values[2] is not None
+                has_op3 = values[4] is not None
+                if not has_op3:
+                    # result is not available
+                    while True:
+                        result = values[:]
+                        print('RESULT', result)
+                        if not has_op1:
+                            result[0] = self._gen_random_operand()
+                        if not has_opr1:
+                            result[1] = random.choice(Operators.get_operators_without_eq())
+                        if not has_op2:
+                            result[2] = self._gen_random_operand()
+                        result[3] = Operators.EQ
+                        result[4] = eval(f'{result[0]}{result[1]}{result[2]}')
+                        if self._is_valid_operand(result[4]):
+                            return result
+                else:
+                    # result is available
+                    pass
+
             else:
-                print('values not usable:', values)
+                # print('values not usable:', values)
+                pass
             return None
 
     def _get_values_for_expression(self, x: int, y: int) -> list[list]:
@@ -99,8 +124,8 @@ class CrossMath:
         start_time = time.time()
         self.table.clear()
         cells = [self.table.get_cell(0, 0)]
-        for _ in range(10):
-            print('generate:', _)
+        while True:
+            # self.table.print()
             cell_start, x, y = self._get_random_cell_for_next(cells)
             values_list = self._get_values_for_expression(x, y)
             # print('values_list:', values_list)
@@ -115,7 +140,7 @@ class CrossMath:
                 if output is None:
                     continue
                 # TODO cell margin check
-                print(output)
+                # print(output)
                 break
             if output is None:
                 cells.remove(cell_start)
