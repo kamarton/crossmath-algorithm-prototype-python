@@ -7,7 +7,6 @@ from expression import (
     Expression,
     ExpressionItem,
     Direction,
-    Operator,
 )
 from expression_resolver import ExpressionResolver
 

@@ -9,14 +9,13 @@ Exp = TypeVar("Exp", bound="Expression")
 class Operator(Enum):
     ADD = "+"
     SUB = "-"
-    # MUL = '*'
-    # DIV = '/'
+    MUL = "*"
+    DIV = "/"
     EQ = "="
 
     @staticmethod
     def get_operators_without_eq() -> list:
-        # return [Operators.ADD, Operators.SUB, Operators.MUL, Operators.DIV]
-        return [Operator.ADD, Operator.SUB]
+        return [Operator.ADD, Operator.SUB, Operator.MUL, Operator.DIV]
 
     def __str__(self):
         return self.value
@@ -83,11 +82,11 @@ class ExpressionValidator:
             or expression.result is None
         ):
             return False
-        if expression.operand1 < 0:
+        if expression.operand1 < 1 or expression.operand1 > 100:
             return False
-        if expression.operand2 < 0:
+        if expression.operand2 < 1 or expression.operand2 > 100:
             return False
-        if expression.result < 0:
+        if expression.result < 1 or expression.result > 100:
             return False
         return True
 
