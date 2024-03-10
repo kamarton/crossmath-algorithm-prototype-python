@@ -1,7 +1,9 @@
-import random
 from enum import Enum
+from typing import TypeVar
 
 import pandas
+
+Exp = TypeVar("Exp", bound="Expression")
 
 
 class Operator(Enum):
@@ -46,6 +48,25 @@ class Expression:
             and self.result is None
         )
 
+    @staticmethod
+    def instance_from_values(values: list) -> Exp:
+        expression = Expression()
+        expression.operand1 = values[0]
+        expression.operator = values[1]
+        expression.operand2 = values[2]
+        if values[3] is not None and values[3] != Operator.EQ:
+            raise ValueError("Invalid values (EQ)")
+        expression.result = values[4]
+        return expression
+
+    def clone(self) -> Exp:
+        expression = Expression()
+        expression.operand1 = self.operand1
+        expression.operator = self.operator
+        expression.operand2 = self.operand2
+        expression.result = self.result
+        return expression
+
     def __str__(self):
         return f"{self.operand1} {self.operator} {self.operand2} = {self.result}"
 
@@ -72,6 +93,9 @@ class ExpressionValidator:
 
 
 class ExpressionItem:
+
+    LENGTH = 5
+
     def __init__(self, x: int, y: int, direction: Direction, expression: Expression):
         self._x = x
         self._y = y
@@ -84,6 +108,12 @@ class ExpressionItem:
     def get_y(self) -> int:
         return self._y
 
+    def add_x(self, x_add: int):
+        self._x += x_add
+
+    def add_y(self, y_add: int):
+        self._y += y_add
+
     def get_direction(self) -> Direction:
         return self._direction
 
@@ -91,7 +121,7 @@ class ExpressionItem:
         return self._expression
 
     def get_length(self) -> int:
-        return 5
+        return self.LENGTH
 
     def get_width(self) -> int:
         return self.get_length() if self.get_direction() == Direction.HORIZONTAL else 1
@@ -106,54 +136,84 @@ class ExpressionItem:
 class ExpressionItems(list):
     def __init__(self):
         super().__init__()
+        self._map: list[list[ExpressionItem]] = list()
+        self._min_x: int | None = 0
+        self._max_x: int | None = 0
+        self._min_y: int | None = 0
+        self._max_y: int | None = 0
 
     def get_min_x(self) -> int:
-        return min([item.get_x() for item in self])
+        return self._min_x
 
     def get_max_x(self) -> int:
-        return max([item.get_x() + item.get_width() for item in self])
+        return self._max_x
 
     def get_min_y(self) -> int:
-        return min([item.get_y() for item in self])
+        return self._min_y
 
     def get_max_y(self) -> int:
-        return max([item.get_y() + item.get_height() for item in self])
+        return self._max_y
 
-    def print(self):
-        rows = [
+    def append(self, __object, fix_positions: bool = True):
+        if fix_positions:
+            __object.add_x(self.get_min_x())
+            __object.add_y(self.get_min_y())
+        super().append(__object)
+        self._refresh_map()
+
+    def _refresh_map(self):
+        self._min_x = self._min_y = self._max_x = self._max_y = 0
+        for item in self:
+            self._min_x = min(self._min_x, item.get_x())
+            self._min_y = min(self._min_y, item.get_y())
+            self._max_x = max(self._max_x, item.get_x() + item.get_width())
+            self._max_y = max(self._max_y, item.get_y() + item.get_height())
+        self._map = [
             [None for _ in range(self.get_min_x(), self.get_max_x())]
             for _ in range(self.get_min_y(), self.get_max_y())
         ]
         for item in self:
             values = item.get_expression().get_values()
-            x = item.get_x()
-            y = item.get_y()
+            x = item.get_x() - self.get_min_x()
+            y = item.get_y() - self.get_min_y()
             x_add = 1 if item.get_direction() == Direction.HORIZONTAL else 0
             y_add = 1 if item.get_direction() == Direction.VERTICAL else 0
             for value in values:
-                rows[y][x] = value
+                self._map[y][x] = value
                 x += x_add
                 y += y_add
 
-        df = pandas.DataFrame(rows)
+    def get_map(self) -> list[list]:
+        return self._map
+
+    def get_values(self, x: int, y: int, direction: Direction, length: int) -> list:
+        result = []
+        x_add = 1 if direction == Direction.HORIZONTAL else 0
+        y_add = 1 if direction == Direction.VERTICAL else 0
+        min_x = self.get_min_x()
+        min_y = self.get_min_y()
+        max_x = self.get_max_x()
+        max_y = self.get_max_y()
+        x -= min_x
+        y -= min_y
+        for _ in range(length):
+            if x < 0 or x >= max_x - min_x or y < 0 or y >= max_y - min_y:
+                result.append(None)
+            else:
+                result.append(self._map[y][x])
+            x += x_add
+            y += y_add
+        return result
+
+    def print(self):
+        map_clone = []
+        for row in self._map:
+            map_clone.append(["" if x is None else str(x) for x in row])
+        pandas.set_option("display.max_rows", None)
+        pandas.set_option("display.max_columns", None)
+        pandas.set_option("display.width", 2000)
+        df = pandas.DataFrame(map_clone)
         print(df)
-
-
-class ExpressionResolver:
-    def __init__(self):
-        self._expression_validator = ExpressionValidator()
-        pass
-
-    def resolve(self, expression: Expression) -> Expression | None:
-        if expression.is_empty():
-            while True:
-                expression.operand1 = random.randint(1, 9)
-                expression.operand2 = random.randint(1, 9)
-                expression.operator = random.choice(Operator.get_operators_without_eq())
-                expression.result = eval(
-                    f"{expression.operand1} {expression.operator} {expression.operand2}"
-                )
-                if not self._expression_validator.validate(expression):
-                    continue
-                return expression
-        return None
+        pandas.reset_option("display.max_rows")
+        pandas.reset_option("display.max_columns")
+        pandas.reset_option("display.width")
