@@ -1,0 +1,3 @@
+-r requirements.txt
+pytest~=8.1
+parametrize-from-file~=0.19
