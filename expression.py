@@ -3,6 +3,8 @@ from typing import TypeVar
 
 import pandas
 
+from number_factory import NumberFactory
+
 Exp = TypeVar("Exp", bound="Expression")
 Opr = TypeVar("Opr", bound="Operator")
 
@@ -28,9 +30,9 @@ class Expression:
 
     def __init__(self):
         self.operator: Operator | None = None
-        self.operand1: int | None = None
-        self.operand2: int | None = None
-        self.result: int | None = None
+        self.operand1: float | None = None
+        self.operand2: float | None = None
+        self.result: float | None = None
         self._length: int = 5
 
     def values(self) -> list:
@@ -52,7 +54,7 @@ class Expression:
             if values[i] == "?":
                 result.append(None)
             elif i % 2 == 0:
-                result.append(int(values[i]))
+                result.append(float(values[i]))
             else:
                 result.append(Operator(values[i]))
         return Expression.from_values(result)
@@ -64,7 +66,7 @@ class Expression:
                 f"Invalid values ({len(values)} not in {Expression.SUPPORTED_LENGTHS})"
             )
         expression = Expression()
-        if values[0] is not None and not isinstance(values[0], int):
+        if values[0] is not None and not isinstance(values[0], float):
             raise ValueError("Invalid values (operand1)")
         expression.operand1 = values[0]
         if (
@@ -73,12 +75,12 @@ class Expression:
         ):
             raise ValueError("Invalid values (operator)")
         expression.operator = values[1]
-        if values[2] is not None and not isinstance(values[2], int):
+        if values[2] is not None and not isinstance(values[2], float):
             raise ValueError("Invalid values (operand2)")
         expression.operand2 = values[2]
         if values[3] is not None and values[3] != Operator.EQ:
             raise ValueError("Invalid values (EQ)")
-        if values[4] is not None and not isinstance(values[4], int):
+        if values[4] is not None and not isinstance(values[4], float):
             raise ValueError("Invalid values (result)")
         expression.result = values[4]
         return expression
@@ -99,12 +101,19 @@ class Expression:
 
 
 class ExpressionValidator:
-    def __int__(self):
-        pass
+    def __init__(
+        self,
+        number_factory: NumberFactory,
+        minimum: float = 0.0,
+        maximum: float = 100.0,
+    ):
+        self._number_factory: NumberFactory = number_factory
+        self._minimum: float = minimum
+        self._maximum: float = maximum
 
     @staticmethod
-    def _is_integer(value) -> bool:
-        return value == int(value)
+    def _is_float(value) -> bool:
+        return isinstance(value, float)
 
     def validate(self, expression: Expression) -> bool:
         if (
@@ -115,22 +124,25 @@ class ExpressionValidator:
         ):
             return False
         if (
-            expression.operand1 < 1
-            or expression.operand1 > 100
-            or not self._is_integer(expression.operand1)
+            not self._is_float(expression.operand1)
+            or not self._is_float(expression.operand2)
+            or not self._is_float(expression.result)
         ):
             return False
-        if (
-            expression.operand2 < 1
-            or expression.operand2 > 100
-            or not self._is_integer(expression.operand2)
+        if not self._check_range(expression.operand1) or not self._is_float(
+            expression.operand1
         ):
             return False
-        if expression.result < 1 or expression.result > 100:
+        if not self._check_range(expression.operand2) or not self._is_float(
+            expression.operand2
+        ):
             return False
-        if not self._is_integer(expression.result):
+        if not self._check_range(expression.result):
             return False
-        return (
-            eval(f"{expression.operand1} {expression.operator} {expression.operand2}")
-            == expression.result
+        return self._number_factory.is_equal(
+            eval(f"{expression.operand1} {expression.operator} {expression.operand2}"),
+            expression.result,
         )
+
+    def _check_range(self, value: float) -> bool:
+        return self._minimum <= value <= self._maximum

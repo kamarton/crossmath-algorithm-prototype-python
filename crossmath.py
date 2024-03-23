@@ -2,21 +2,26 @@ import random
 import time
 from typing import Tuple
 
-from expression import Expression
+from expression import Expression, ExpressionValidator
 from expression_map import ExpressionMap, ExpressionItem, Direction
 from expression_resolver import ExpressionResolver
+from number_factory import NumberFactory
 
 
 class CrossMath:
-    def __init__(self, exp_map: ExpressionMap):
+    def __init__(self, exp_map: ExpressionMap, number_factory: NumberFactory):
         self._map = exp_map
-        self._expression_resolver = ExpressionResolver()
+        self._number_factory = number_factory
+        self._expression_resolver = ExpressionResolver(
+            validator=ExpressionValidator(number_factory=number_factory),
+            number_factory=number_factory,
+        )
 
     def _find_potential_positions(self) -> list[Tuple[int, int]]:
         for y in range(self._map.height()):
             for x in range(self._map.width()):
                 value = self._map.get(x, y)
-                if isinstance(value, int):
+                if isinstance(value, float):
                     yield x, y
 
     def _check_expression_frame(
@@ -138,4 +143,4 @@ class CrossMath:
             print("time: ", time.time() - start_time)
 
     def print(self):
-        self._map.print()
+        self._map.print(number_factory=self._number_factory)

@@ -2,7 +2,8 @@ from enum import Enum
 
 import pandas
 
-from expression import Expression
+from expression import Expression, Operator
+from number_factory import NumberFactory
 
 
 class Direction(Enum):
@@ -65,7 +66,9 @@ class ExpressionMap:
     def __init__(self, width: int, height: int):
         self._width = width
         self._height = height
-        self._map: list[list] = [[None for _ in range(width)] for _ in range(height)]
+        self._map: list[list[Operator | None | float]] = [
+            [None for _ in range(width)] for _ in range(height)
+        ]
 
     def width(self) -> int:
         return self._width
@@ -73,9 +76,9 @@ class ExpressionMap:
     def height(self) -> int:
         return self._height
 
-    def get(self, x: int, y: int):
+    def get(self, x: int, y: int) -> Operator | None | float:
         if x < 0 or y < 0 or x >= self._width or y >= self._height:
-            return ValueError(f"Invalid x, y: {x}, {y}")
+            raise ValueError(f"Invalid x, y: {x}, {y}")
         return self._map[y][x]
 
     def get_values(self, x: int, y: int, direction: Direction, length: int):
@@ -121,7 +124,7 @@ class ExpressionMap:
             else:
                 self._map[y + i][x] = values[i]
 
-    def print(self):
+    def print(self, number_factory: NumberFactory | None = None):
         pandas.set_option("display.max_rows", None)
         pandas.set_option("display.max_columns", None)
         pandas.set_option("display.width", 2000)
@@ -130,6 +133,9 @@ class ExpressionMap:
             for x in range(self._width):
                 if self._map[y][x] is not None:
                     map_clear[y][x] = self._map[y][x]
+                    is_numeric = isinstance(self._map[y][x], float)
+                    if number_factory is not None and is_numeric:
+                        map_clear[y][x] = number_factory.format(self._map[y][x])
         df = pandas.DataFrame(map_clear)
         print(df)
         pandas.reset_option("display.max_rows")
