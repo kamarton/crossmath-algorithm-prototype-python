@@ -1,13 +1,17 @@
+import math
 import random
 
 
 class NumberFactory:
 
-    def __init__(self, minimum: float = 1.0, maximum: float = 10.0, decimals: int = 0):
+    def __init__(self, minimum: float = 1.0, maximum: float = 10.0, step: float = 1):
         self._number_stat: dict[str, int] = {}
         self._min: float = minimum
         self._max: float = maximum
-        self._decimals: int = decimals
+        if step <= 0:
+            raise ValueError("Step must be greater than 0")
+        self._step = step
+        self._decimals: int = max(0, -1 * math.floor(math.log10(step)))
 
     def next(
         self,
@@ -21,17 +25,16 @@ class NumberFactory:
             raise ValueError("Step cannot be 0")
         full_range = abs((maximum or self._max) - (minimum or self._min))
         while True:
-            value = self.fix(random.random() * full_range + (minimum or self._min))
-            if dividable_by is not None:
-                value = round(value / dividable_by) * dividable_by
-                if value < (minimum or self._min):
-                    value += dividable_by
-                elif value > (maximum or self._max):
-                    value -= dividable_by
-                value = self.fix(value)
-            if zero_allowed or value != 0:
-                return value
-            continue
+            value = self.fix(
+                random.random() * full_range + (minimum or self._min), dividable_by
+            )
+            while value < (minimum or self._min):
+                value += self._step
+            while value > (maximum or self._max):
+                value -= self._step
+            if not zero_allowed and self.is_equal(value, 0.0):
+                continue
+            return value
 
     def is_equal(self, value1: float | None, value2: float | None) -> bool:
         return self.format(value1, decimals=8) == self.format(value2, decimals=8)
@@ -43,8 +46,14 @@ class NumberFactory:
             decimals = self._decimals
         return f"{value:.{0 if decimals < 1 else decimals}f}"
 
-    def fix(self, value: float):
-        return round(value, self._decimals)
+    def fix(self, value: float, step: float | None = None) -> float:
+        if step is None:
+            step = self._step
+        elif step < self._step:
+            raise ValueError(
+                f"Step must be greater than or equal to the factory step: {self._step} vs {step}"
+            )
+        return round(round(value / step) * step, self._decimals)
 
     def fly_back(self, value: float):
         str_value = self.format(value)

@@ -17,6 +17,11 @@ class ExpressionResolver:
         self._number_factory.fly_back(expression.result)
         pass
 
+    def _fix_result(self, expression: Expression):
+        expression.operand1 = self._number_factory.fix(expression.operand1)
+        expression.operand2 = self._number_factory.fix(expression.operand2)
+        expression.result = self._number_factory.fix(expression.result)
+
     def _resolve_result_is_none(self, expression: Expression) -> Expression | None:
         while True:
             exp_result = expression.clone()
@@ -29,7 +34,7 @@ class ExpressionResolver:
                     exp_result.operand2 = self._number_factory.next(
                         maximum=exp_result.operand1
                     )
-                elif exp_result.operator == Operator.DIV and exp_result.operand1 != 0:
+                elif exp_result.operator == Operator.DIV:
                     exp_result.operand2 = self._number_factory.next(
                         maximum=exp_result.operand1,
                         dividable_by=exp_result.operand1,
@@ -42,6 +47,7 @@ class ExpressionResolver:
                     f"{exp_result.operand1} {exp_result.operator} {exp_result.operand2}"
                 )
             )
+            self._fix_result(exp_result)
             self._check_result(expression, exp_result)
             if not self._validator.validate(exp_result):
                 # TODO time or count limit
@@ -128,22 +134,15 @@ class ExpressionResolver:
                 print(f"ExpressionResolver.resolve: {diff:.2f} seconds")
 
     def _check_result(self, expression: Expression, result: Expression):
-        if (
-            (
-                expression.operand1 is not None
-                and not self._number_factory.is_equal(
-                    expression.operand1, result.operand1
-                )
-            )
-            or (
-                expression.operand2 is not None
-                and not self._number_factory.is_equal(
-                    expression.operand2, result.operand2
-                )
-            )
-            or (
-                expression.result is not None
-                and not self._number_factory.is_equal(expression.result, result.result)
-            )
-        ):
-            raise RuntimeError(f"Invalid expression: {expression} -> {result}")
+        if expression.operand1 is not None:
+            if not self._number_factory.is_equal(expression.operand1, result.operand1):
+                raise RuntimeError(f"Invalid operand1: {expression} -> {result}")
+        if expression.operand2 is not None:
+            if not self._number_factory.is_equal(expression.operand2, result.operand2):
+                raise RuntimeError(f"Invalid operand2: {expression} -> {result}")
+        if expression.result is not None:
+            if not self._number_factory.is_equal(expression.result, result.result):
+                raise RuntimeError(f"Invalid result: {expression} -> {result}")
+        if expression.operator is not None:
+            if expression.operator != result.operator:
+                raise RuntimeError(f"Invalid operator: {expression} -> {result}")
