@@ -139,6 +139,10 @@ class ExpressionValidator:
             return False
         if not self._check_range(expression.result):
             return False
+        if expression.operator == Operator.DIV and self._number_factory.is_equal(
+            expression.operand2, 0.0
+        ):
+            return False
         return self._number_factory.is_equal(
             eval(f"{expression.operand1} {expression.operator} {expression.operand2}"),
             expression.result,

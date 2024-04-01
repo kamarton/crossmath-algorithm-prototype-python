@@ -21,8 +21,11 @@ class NumberFactory:
         zero_allowed: bool = True,
     ) -> float:
         # TODO add support for negative numbers
-        if dividable_by is not None and dividable_by == 0:
-            raise ValueError("Step cannot be 0")
+        if dividable_by is not None:
+            if self.is_equal(dividable_by, 0.0):
+                dividable_by = None
+            else:
+                dividable_by = abs(dividable_by)
         full_range = abs((maximum or self._max) - (minimum or self._min))
         while True:
             value = self.fix(
