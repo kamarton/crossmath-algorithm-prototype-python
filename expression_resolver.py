@@ -66,7 +66,8 @@ class ExpressionResolver:
                 else random.choice(Operator.get_operators_without_eq())
             )
             exp_result.operator = operator
-            if exp_calc.operand1 is None and exp_calc.operand2 is None:
+            not_has_operands = exp_calc.operand1 is None and exp_calc.operand2 is None
+            if not_has_operands:
                 exp_result.operand1 = exp_calc.operand1 = self._number_factory.next()
             if operator == Operator.ADD:
                 # a + b = c
@@ -91,6 +92,11 @@ class ExpressionResolver:
                 exp_calc.operator = Operator.DIV
             elif operator == Operator.DIV:
                 # a / b = c
+                if not_has_operands:
+                    exp_result.operand1 = exp_calc.operand1 = None
+                    exp_result.operand2 = exp_calc.operand2 = (
+                        self._number_factory.next()
+                    )
                 if exp_calc.operand1 is None:
                     # ? / b = c -> b * c = ?
                     exp_calc.operator = Operator.MUL
