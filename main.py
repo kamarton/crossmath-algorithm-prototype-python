@@ -8,7 +8,7 @@ WIDTH = int(os.environ.get("WIDTH", 20))
 HEIGHT = int(os.environ.get("HEIGHT", 20))
 NUMBER_FACTORY_MIN = float(os.environ.get("NUMBER_FACTORY_MIN", 0.1))
 NUMBER_FACTORY_MAX = float(os.environ.get("NUMBER_FACTORY_MAX", 8.0))
-NUMBER_FACTORY_STEP = float(os.environ.get("NUMBER_FACTORY_STEP", 0.2))
+NUMBER_FACTORY_STEP = float(os.environ.get("NUMBER_FACTORY_STEP", 0.5))
 
 if __name__ == "__main__":
     exp_map = ExpressionMap(width=WIDTH, height=HEIGHT)

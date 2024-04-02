@@ -34,11 +34,11 @@ def test_range_with_dividable_by_step_0_1():
 
 def test_range_with_dividable_by_step_0_2():
     """
-    0.2 step with dividable by 0.7
+    0.2 step with dividable by 0.8
     """
     number_factory = NumberFactory(minimum=1, maximum=10, step=0.2)
-    result = number_factory.next(minimum=1, maximum=3, dividable_by=0.7)
-    assert eq_in(result, [1.4, 2.0, 2.8])
+    result = number_factory.next(minimum=1, maximum=3, dividable_by=0.8)
+    assert eq_in(result, [1.6, 2.4])
 
 
 def test_fix_0_2():
@@ -52,3 +52,22 @@ def test_fix_0_2():
     assert eq(number_factory.fix(1.6), 1.6)
     assert eq(number_factory.fix(-1.6), -1.6)
     assert eq(number_factory.fix(-1.5), -1.6)
+
+
+def test_decimals():
+    number_factory = NumberFactory(step=1.0)
+    assert number_factory.get_decimals() == 0
+    number_factory = NumberFactory(step=0.1)
+    assert number_factory.get_decimals() == 1
+    number_factory = NumberFactory(step=0.01)
+    assert number_factory.get_decimals() == 2
+    number_factory = NumberFactory(step=0.2)
+    assert number_factory.get_decimals() == 1
+    number_factory = NumberFactory(step=0.25)
+    assert number_factory.get_decimals() == 2
+    number_factory = NumberFactory(step=1)
+    assert number_factory.get_decimals() == 0
+    number_factory = NumberFactory(step=10)
+    assert number_factory.get_decimals() == 0
+    number_factory = NumberFactory(step=100)
+    assert number_factory.get_decimals() == 0

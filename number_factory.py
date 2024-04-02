@@ -11,7 +11,26 @@ class NumberFactory:
         if step <= 0:
             raise ValueError("Step must be greater than 0")
         self._step = step
-        self._decimals: int = max(0, -1 * math.floor(math.log10(step)))
+        self._decimals = NumberFactory._get_decimals_from_step(step)
+
+    @staticmethod
+    def _get_decimals_from_step(step: float) -> int:
+        str_step = ("%.10f" % step).rstrip("0")
+        if "." in str_step:
+            return len(str_step.split(".")[1])
+        return 0
+
+    def get_step(self) -> float:
+        return self._step
+
+    def get_minimum(self) -> float:
+        return self._min
+
+    def get_maximum(self) -> float:
+        return self._max
+
+    def get_decimals(self) -> int:
+        return self._decimals
 
     def next(
         self,
@@ -26,6 +45,12 @@ class NumberFactory:
                 dividable_by = None
             else:
                 dividable_by = abs(dividable_by)
+                a = int(dividable_by * 10**self._decimals)
+                b = int(self._step * 10**self._decimals)
+                if a % b != 0:
+                    raise ValueError(
+                        f"Dividable by must be dividable by step: {dividable_by} vs {self._step}"
+                    )
         full_range = abs((maximum or self._max) - (minimum or self._min))
         while True:
             value = self.fix(
