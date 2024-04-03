@@ -4,7 +4,7 @@ from typing import Tuple
 
 from expression import Expression, ExpressionValidator
 from expression_map import ExpressionMap, ExpressionItem, Direction
-from expression_resolver import ExpressionResolver
+from expression_resolver import ExpressionResolver, ExpressionResolverException
 from number_factory import NumberFactory
 
 
@@ -13,7 +13,9 @@ class CrossMath:
         self._map = exp_map
         self._number_factory = number_factory
         self._expression_resolver = ExpressionResolver(
-            validator=ExpressionValidator(number_factory=number_factory),
+            validator=ExpressionValidator(
+                number_factory=number_factory, minimum=-100, maximum=50
+            ),
             number_factory=number_factory,
         )
 
@@ -59,12 +61,16 @@ class CrossMath:
         return True
 
     def _find_potential_values(
-        self, potential_positions: list[Tuple[int, int]]
+        self,
+        potential_positions: list[Tuple[int, int]],
+        dead_positions: list[Tuple[Direction, int, int]],
     ) -> list[Tuple[Direction, int, int, list]]:
         max_expression_length = max(Expression.SUPPORTED_LENGTHS)
         for next_position in potential_positions:
             x, y = next_position
             for direction in Direction.all():
+                if (direction, x, y) in dead_positions:
+                    continue
                 for expression_offset in range(0, -max_expression_length - 1, -2):
                     values_x_offset = (
                         0 if direction.is_vertical() else expression_offset
@@ -105,33 +111,34 @@ class CrossMath:
             raise Exception("No expression found")
         direction = random.choice([Direction.HORIZONTAL, Direction.VERTICAL])
         item = ExpressionItem(
-            3,
-            3,
+            2,
+            2,
             direction,
             expression,
         )
         self._map.put(item)
 
     def generate(self):
-        start_time = time.time()
         self._init_generate()
-        for i in range(40):
+        dead_positions = []
+        while True:
             potential_positions = self._find_potential_positions()
-            potential_values = list(self._find_potential_values(potential_positions))
+            potential_values = list(
+                self._find_potential_values(potential_positions, dead_positions)
+            )
             random.shuffle(potential_values)
             is_expression_appended = False
             for desc in potential_values:
+                print(".", end="")
                 direction, _x, _y, values = desc
                 # print("desc:", desc, "x:", _x, "y:", _y)
                 try:
                     expression = self._expression_resolver.resolve(
                         Expression.from_values(values)
                     )
-                except ValueError:
-                    # TODO store dead positions
-                    continue
-                if expression is None:
-                    # TODO store dead positions
+                except ExpressionResolverException as e:
+                    print(f"ExpressionResolverException: {e}")
+                    dead_positions.append((direction, _x, _y))
                     continue
                 expression_item = ExpressionItem(_x, _y, direction, expression)
                 self._map.put(expression_item)
@@ -139,8 +146,6 @@ class CrossMath:
                 break
             if not is_expression_appended:
                 break
-
-            print("time: ", time.time() - start_time)
 
     def print(self):
         self._map.print(number_factory=self._number_factory)

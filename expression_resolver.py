@@ -5,6 +5,33 @@ from expression import Expression, ExpressionValidator, Operator
 from number_factory import NumberFactory
 
 
+class ExpressionResolverException(Exception):
+    def __init__(
+        self,
+        message: str = "Expression resolver exception",
+        expression: Expression | None = None,
+    ):
+        super().__init__(f"{message} (expression={expression})")
+
+
+class ExpressionResolverNotResolvable(ExpressionResolverException):
+    def __init__(
+        self,
+        message: str = "Expression is not resolvable",
+        expression: Expression | None = None,
+    ):
+        super().__init__(message, expression=expression)
+
+
+class ExpressionResolverMaybeNotResolvable(ExpressionResolverException):
+    def __init__(
+        self,
+        message: str = "Expression is maybe not resolvable",
+        expression: Expression | None = None,
+    ):
+        super().__init__(message, expression=expression)
+
+
 class ExpressionResolver:
     def __init__(self, validator: ExpressionValidator, number_factory: NumberFactory):
         self._validator = validator
@@ -22,11 +49,28 @@ class ExpressionResolver:
         expression.operand2 = self._number_factory.fix(expression.operand2)
         expression.result = self._number_factory.fix(expression.result)
 
-    def _resolve_result_is_none(self, expression: Expression) -> Expression | None:
+    def _next_operator(self, expression: Expression) -> list[Operator]:
+        if expression.operand1 is None or expression.operand2 is None:
+            yield random.choice(Operator.get_operators_without_eq())
+        operators = Operator.get_operators_without_eq()
+        random.shuffle(operators)
+        for operator in operators:
+            yield operator
+
+    def _resolve_result_is_none(self, expression: Expression) -> Expression:
+        start = time.time()
+        operators = self._next_operator(expression)
         while True:
             exp_result = expression.clone()
             if exp_result.operator is None:
-                exp_result.operator = random.choice(Operator.get_operators_without_eq())
+                try:
+                    exp_result.operator = next(operators)
+                except StopIteration:
+                    raise ExpressionResolverNotResolvable(expression=expression)
+            if exp_result.operator == Operator.DIV and NumberFactory.is_zero(
+                exp_result.operand2
+            ):
+                continue
             if exp_result.operand1 is None:
                 exp_result.operand1 = self._number_factory.next()
             if exp_result.operand2 is None:
@@ -51,11 +95,14 @@ class ExpressionResolver:
             self._check_result(expression, exp_result)
             if not self._validator.validate(exp_result):
                 # TODO time or count limit
+                if time.time() - start > 1.0:
+                    raise ExpressionResolverMaybeNotResolvable(expression=expression)
                 continue
             self._fly_back(exp_result)
             return exp_result
 
-    def _resolve_result_is_available(self, expression: Expression) -> Expression | None:
+    def _resolve_result_is_available(self, expression: Expression) -> Expression:
+        start = time.time()
         while True:
             exp_calc = expression.clone()
             exp_result = expression.clone()
@@ -90,6 +137,12 @@ class ExpressionResolver:
                 # a * ? = c -> c / a = b
                 # ? * b = c -> c / b = a
                 exp_calc.operator = Operator.DIV
+                if not_has_operands:
+                    exp_result.operand1 = exp_calc.operand1 = self._number_factory.next(
+                        dividable_by=exp_result.result,
+                        zero_allowed=False,
+                    )
+                    print(exp_calc)
             elif operator == Operator.DIV:
                 # a / b = c
                 if not_has_operands:
@@ -109,20 +162,31 @@ class ExpressionResolver:
             else:
                 raise RuntimeError(f"Invalid operator: {operator}")
             if exp_result.operand1 is None:
+                if ExpressionResolver.is_zero_division(
+                    exp_calc.operator, exp_calc.operand2
+                ):
+                    continue
                 exp_result.operand1 = self._number_factory.fix(
                     eval(f"{exp_calc.result} {exp_calc.operator} {exp_calc.operand2}")
                 )
             elif exp_result.operand2 is None:
+                if ExpressionResolver.is_zero_division(
+                    exp_calc.operator, exp_calc.operand1
+                ):
+                    continue
                 exp_result.operand2 = self._number_factory.fix(
                     eval(f"{exp_calc.result} {exp_calc.operator} {exp_calc.operand1}")
                 )
             else:
-                raise ValueError(f"Operator resolver not supported ({expression})")
+                raise ExpressionResolverException(
+                    "Operator resolver mode not supported", expression=expression
+                )
             self._check_result(expression, exp_result)
 
-            # print("expression:", expression, "exp_result:", exp_result)
             if not self._validator.validate(exp_result):
                 # TODO time or count limit
+                if time.time() - start > 1.0:
+                    raise ExpressionResolverMaybeNotResolvable(expression=expression)
                 continue
             self._fly_back(exp_result)
             return exp_result
@@ -152,3 +216,7 @@ class ExpressionResolver:
         if expression.operator is not None:
             if expression.operator != result.operator:
                 raise RuntimeError(f"Invalid operator: {expression} -> {result}")
+
+    @staticmethod
+    def is_zero_division(operator: Operator, operand2: float) -> bool:
+        return operator == Operator.DIV and NumberFactory.is_zero(operand2)

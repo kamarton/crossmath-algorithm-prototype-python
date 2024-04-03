@@ -60,9 +60,15 @@ class NumberFactory:
                 value += self._step
             while value > (maximum or self._max):
                 value -= self._step
-            if not zero_allowed and self.is_equal(value, 0.0):
+            if not zero_allowed and NumberFactory.is_zero(value):
                 continue
             return value
+
+    @staticmethod
+    def is_zero(value: float | None):
+        if value is None:
+            return False
+        return abs(0.0 - value) < 1e-6
 
     def is_equal(self, value1: float | None, value2: float | None) -> bool:
         return self.format(value1, decimals=8) == self.format(value2, decimals=8)

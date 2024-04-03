@@ -71,3 +71,11 @@ def test_decimals():
     assert number_factory.get_decimals() == 0
     number_factory = NumberFactory(step=100)
     assert number_factory.get_decimals() == 0
+
+
+def test_is_zero():
+    assert NumberFactory.is_zero(0.0)
+    assert not NumberFactory.is_zero(0.1)
+    assert not NumberFactory.is_zero(-0.1)
+    assert not NumberFactory.is_zero(1.0)
+    assert not NumberFactory.is_zero(-1.0)
