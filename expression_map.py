@@ -1,4 +1,6 @@
+import random
 from enum import Enum
+from typing import Tuple
 
 import pandas
 
@@ -13,6 +15,12 @@ class Direction(Enum):
     @staticmethod
     def all() -> list:
         return [Direction.HORIZONTAL, Direction.VERTICAL]
+
+    @staticmethod
+    def all_random() -> list:
+        directions = Direction.all()
+        random.shuffle(directions)
+        return directions
 
     def is_horizontal(self) -> bool:
         return self == Direction.HORIZONTAL
@@ -62,6 +70,14 @@ class ExpressionItem:
         return f"x: {self.x()}, y: {self.y()}, direction: {self.direction()}, length: {self.length()}, expression: {self.expression()}"
 
 
+class ExpressionMapException(Exception):
+    pass
+
+
+class ExpressionMapCellValueMissmatch(ExpressionMapException):
+    pass
+
+
 class ExpressionMap:
     def __init__(self, width: int, height: int):
         self._width = width
@@ -69,6 +85,14 @@ class ExpressionMap:
         self._map: list[list[Operator | None | float]] = [
             [None for _ in range(width)] for _ in range(height)
         ]
+        self._operands_point: list[Tuple[int, int]] = []
+        self._version: int = 0
+
+    def get_version(self) -> int:
+        return self._version
+
+    def get_all_operand_points(self) -> list[Tuple[int, int]]:
+        return self._operands_point
 
     def width(self) -> int:
         return self._width
@@ -110,19 +134,21 @@ class ExpressionMap:
         for i in range(len(values)):
             if item.is_horizontal():
                 if self._map[y][x + i] is not None and self._map[y][x + i] != values[i]:
-                    raise ValueError(
+                    raise ExpressionMapCellValueMissmatch(
                         f"Illegal override x, y, values: {x}, {y}, {self._map[y][x + i]}, {values[i]}"
                     )
             else:
                 if self._map[y + i][x] is not None and self._map[y + i][x] != values[i]:
-                    raise ValueError(
+                    raise ExpressionMapCellValueMissmatch(
                         f"Illegal override x, y, values: {x}, {y}, {self._map[y + i][x]}, {values[i]}"
                     )
         for i in range(len(values)):
-            if item.is_horizontal():
-                self._map[y][x + i] = values[i]
-            else:
-                self._map[y + i][x] = values[i]
+            target_x = x + i if item.is_horizontal() else x
+            target_y = y + i if item.is_vertical() else y
+            if isinstance(values[i], float):
+                self._operands_point.append((target_x, target_y))
+            self._map[target_y][target_x] = values[i]
+        self._version += 1
 
     def print(self, number_factory: NumberFactory | None = None):
         pandas.set_option("display.max_rows", None)

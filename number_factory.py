@@ -41,7 +41,7 @@ class NumberFactory:
     ) -> float:
         # TODO add support for negative numbers
         if dividable_by is not None:
-            if self.is_equal(dividable_by, 0.0):
+            if NumberFactory.is_zero(dividable_by):
                 dividable_by = None
             else:
                 dividable_by = abs(dividable_by)
@@ -62,7 +62,7 @@ class NumberFactory:
                 value -= self._step
             if not zero_allowed and NumberFactory.is_zero(value):
                 continue
-            return value
+            return self.fix(value)
 
     @staticmethod
     def is_zero(value: float | None):
@@ -70,8 +70,13 @@ class NumberFactory:
             return False
         return abs(0.0 - value) < 1e-6
 
-    def is_equal(self, value1: float | None, value2: float | None) -> bool:
-        return self.format(value1, decimals=8) == self.format(value2, decimals=8)
+    @staticmethod
+    def is_equal(value1: float | None, value2: float | None) -> bool:
+        if value1 is None and value2 is None:
+            return True
+        if value1 is None or value2 is None:
+            return False
+        return abs(value1 - value2) < 1e-8
 
     def format(self, value: float | None, decimals: int | None = None) -> str:
         if value is None:

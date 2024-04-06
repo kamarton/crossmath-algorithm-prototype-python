@@ -79,3 +79,10 @@ def test_is_zero():
     assert not NumberFactory.is_zero(-0.1)
     assert not NumberFactory.is_zero(1.0)
     assert not NumberFactory.is_zero(-1.0)
+
+
+def test_is_equal():
+    assert NumberFactory.is_equal(0.0, 0.0)
+    assert NumberFactory.is_equal(-0.0001, -0.0001)
+    assert not NumberFactory.is_equal(0.0001, -0.0001)
+    assert not NumberFactory.is_equal(0.0001, 0.0001001)

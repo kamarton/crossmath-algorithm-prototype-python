@@ -95,11 +95,47 @@ class ExpressionResolver:
             self._check_result(expression, exp_result)
             if not self._validator.validate(exp_result):
                 # TODO time or count limit
-                if time.time() - start > 1.0:
-                    raise ExpressionResolverMaybeNotResolvable(expression=expression)
+                time_diff = time.time() - start
+                if time_diff > 1.0:
+                    raise ExpressionResolverMaybeNotResolvable(
+                        message=f"Too slow: {time_diff:.1f}s", expression=expression
+                    )
                 continue
             self._fly_back(exp_result)
             return exp_result
+
+    def _resolve_only_operator_missing(self, expression: Expression) -> Expression:
+        if (
+            expression.operand1 is None
+            or expression.operand2 is None
+            or expression.result is None
+            or expression.operator is not None
+        ):
+            raise RuntimeError(
+                f"Invalid state, only operator missing is allowed: {expression}"
+            )
+        operators = Operator.get_operators_without_eq()
+        random.shuffle(operators)
+        for operator in operators:
+            if operator == Operator.DIV and NumberFactory.is_zero(expression.operand2):
+                # zero division
+                continue
+            exp_result = expression.clone()
+            exp_result.operator = operator
+            exp_result.result = self._number_factory.fix(
+                eval(
+                    f"{exp_result.operand1} {exp_result.operator} {exp_result.operand2}"
+                )
+            )
+            if not NumberFactory.is_equal(exp_result.result, expression.result):
+                continue
+            self._fix_result(exp_result)
+            self._check_result(expression, exp_result)
+            if not self._validator.validate(exp_result):
+                continue
+            self._fly_back(exp_result)
+            return exp_result
+        raise ExpressionResolverNotResolvable(expression=expression)
 
     def _resolve_result_is_available(self, expression: Expression) -> Expression:
         start = time.time()
@@ -178,15 +214,16 @@ class ExpressionResolver:
                     eval(f"{exp_calc.result} {exp_calc.operator} {exp_calc.operand1}")
                 )
             else:
-                raise ExpressionResolverException(
-                    "Operator resolver mode not supported", expression=expression
-                )
+                raise RuntimeError("Invalid state: only one operand is missing")
             self._check_result(expression, exp_result)
 
             if not self._validator.validate(exp_result):
                 # TODO time or count limit
-                if time.time() - start > 1.0:
-                    raise ExpressionResolverMaybeNotResolvable(expression=expression)
+                time_diff = time.time() - start
+                if time_diff > 1.0:
+                    raise ExpressionResolverMaybeNotResolvable(
+                        message=f"Too slow: {time_diff:.1f}s", expression=expression
+                    )
                 continue
             self._fly_back(exp_result)
             return exp_result
@@ -196,6 +233,8 @@ class ExpressionResolver:
         try:
             if expression.result is None:
                 return self._resolve_result_is_none(expression)
+            if expression.operand1 is not None and expression.operand2 is not None:
+                return self._resolve_only_operator_missing(expression)
             return self._resolve_result_is_available(expression)
         finally:
             end_time = time.time()
@@ -205,13 +244,13 @@ class ExpressionResolver:
 
     def _check_result(self, expression: Expression, result: Expression):
         if expression.operand1 is not None:
-            if not self._number_factory.is_equal(expression.operand1, result.operand1):
+            if not NumberFactory.is_equal(expression.operand1, result.operand1):
                 raise RuntimeError(f"Invalid operand1: {expression} -> {result}")
         if expression.operand2 is not None:
-            if not self._number_factory.is_equal(expression.operand2, result.operand2):
+            if not NumberFactory.is_equal(expression.operand2, result.operand2):
                 raise RuntimeError(f"Invalid operand2: {expression} -> {result}")
         if expression.result is not None:
-            if not self._number_factory.is_equal(expression.result, result.result):
+            if not NumberFactory.is_equal(expression.result, result.result):
                 raise RuntimeError(f"Invalid result: {expression} -> {result}")
         if expression.operator is not None:
             if expression.operator != result.operator:

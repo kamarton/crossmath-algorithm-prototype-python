@@ -3,9 +3,40 @@ import time
 from typing import Tuple
 
 from expression import Expression, ExpressionValidator
-from expression_map import ExpressionMap, ExpressionItem, Direction
-from expression_resolver import ExpressionResolver, ExpressionResolverException
+from expression_map import (
+    ExpressionMap,
+    ExpressionItem,
+    Direction,
+    ExpressionMapCellValueMissmatch,
+)
+from expression_resolver import (
+    ExpressionResolver,
+    ExpressionResolverException,
+)
 from number_factory import NumberFactory
+
+
+class DeadPoints:
+    def __init__(self):
+        self._data: dict[Tuple[int, int], list[Direction]] = {}
+
+    def add(self, x: int, y: int, direction: Direction):
+        if (x, y) not in self._data:
+            self._data[(x, y)] = []
+        self._data[(x, y)].append(direction)
+
+    def is_dead(self, x: int, y: int, direction: Direction) -> bool:
+        if (x, y) not in self._data:
+            return False
+        return direction in self._data[(x, y)]
+
+    def is_dead_full(self, x: int, y: int) -> bool:
+        if (x, y) not in self._data:
+            return False
+        return len(self._data[(x, y)]) == len(Direction.all())
+
+    def clear(self):
+        self._data.clear()
 
 
 class CrossMath:
@@ -18,13 +49,14 @@ class CrossMath:
             ),
             number_factory=number_factory,
         )
+        self._dead_points = DeadPoints()
 
     def _find_potential_positions(self) -> list[Tuple[int, int]]:
-        for y in range(self._map.height()):
-            for x in range(self._map.width()):
-                value = self._map.get(x, y)
-                if isinstance(value, float):
-                    yield x, y
+        for point in self._map.get_all_operand_points():
+            x, y = point
+            if self._dead_points.is_dead_full(x, y):
+                continue
+            yield point
 
     def _check_expression_frame(
         self, x: int, y: int, direction: Direction, length: int
@@ -63,14 +95,11 @@ class CrossMath:
     def _find_potential_values(
         self,
         potential_positions: list[Tuple[int, int]],
-        dead_positions: list[Tuple[Direction, int, int]],
     ) -> list[Tuple[Direction, int, int, list]]:
         max_expression_length = max(Expression.SUPPORTED_LENGTHS)
         for next_position in potential_positions:
             x, y = next_position
             for direction in Direction.all():
-                if (direction, x, y) in dead_positions:
-                    continue
                 for expression_offset in range(0, -max_expression_length - 1, -2):
                     values_x_offset = (
                         0 if direction.is_vertical() else expression_offset
@@ -97,6 +126,8 @@ class CrossMath:
                         if all([value is not None for value in values]):
                             # already filled
                             continue
+                        if self._dead_points.is_dead(values_x, values_y, direction):
+                            continue
 
                         yield (
                             direction,
@@ -119,32 +150,28 @@ class CrossMath:
         self._map.put(item)
 
     def generate(self):
+        self._dead_points.clear()
         self._init_generate()
-        dead_positions = []
-        while True:
-            potential_positions = self._find_potential_positions()
-            potential_values = list(
-                self._find_potential_values(potential_positions, dead_positions)
+        latest_version = None
+        while latest_version != self._map.get_version():
+            latest_version = self._map.get_version()
+            potential_values = self._find_potential_values(
+                potential_positions=self._find_potential_positions(),
             )
-            random.shuffle(potential_values)
-            is_expression_appended = False
-            for desc in potential_values:
-                print(".", end="")
+            pvs = list(potential_values)
+            random.shuffle(pvs)
+            for desc in pvs:
                 direction, _x, _y, values = desc
-                # print("desc:", desc, "x:", _x, "y:", _y)
                 try:
                     expression = self._expression_resolver.resolve(
                         Expression.from_values(values)
                     )
                 except ExpressionResolverException as e:
-                    print(f"ExpressionResolverException: {e}")
-                    dead_positions.append((direction, _x, _y))
+                    print(e)
+                    self._dead_points.add(_x, _y, direction)
                     continue
                 expression_item = ExpressionItem(_x, _y, direction, expression)
                 self._map.put(expression_item)
-                is_expression_appended = True
-                break
-            if not is_expression_appended:
                 break
 
     def print(self):
