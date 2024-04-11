@@ -40,15 +40,10 @@ class DeadPoints:
 
 
 class CrossMath:
-    def __init__(self, exp_map: ExpressionMap, number_factory: NumberFactory):
+    def __init__(self, exp_map: ExpressionMap, number_factory: NumberFactory, expression_resolver : ExpressionResolver):
         self._map = exp_map
         self._number_factory = number_factory
-        self._expression_resolver = ExpressionResolver(
-            validator=ExpressionValidator(
-                number_factory=number_factory, minimum=-100, maximum=50
-            ),
-            number_factory=number_factory,
-        )
+        self._expression_resolver = expression_resolver
         self._dead_points = DeadPoints()
 
     def _find_potential_positions(self) -> list[Tuple[int, int]]:

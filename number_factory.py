@@ -1,10 +1,26 @@
 import math
 import random
+import time
+
+
+class RandomGenerator:
+    def __init__(self, seed: int = None):
+        self._seed = seed
+        self._random = random.Random(seed)
+
+    def next_int(self, maximum: int) -> int:
+        return self._random.randint(0, maximum)
 
 
 class NumberFactory:
 
-    def __init__(self, minimum: float = 1.0, maximum: float = 10.0, step: float = 1):
+    def __init__(
+        self,
+        minimum: float = 1.0,
+        maximum: float = 10.0,
+        step: float = 1,
+        random_generator: RandomGenerator | None = None,
+    ):
         self._number_stat: dict[str, int] = {}
         self._min: float = minimum
         self._max: float = maximum
@@ -12,6 +28,7 @@ class NumberFactory:
             raise ValueError("Step must be greater than 0")
         self._step = step
         self._decimals = NumberFactory._get_decimals_from_step(step)
+        self._random_generator: RandomGenerator = random_generator or RandomGenerator()
 
     @staticmethod
     def _get_decimals_from_step(step: float) -> int:
@@ -39,10 +56,13 @@ class NumberFactory:
         dividable_by: float | None = None,
         zero_allowed: bool = True,
     ) -> float:
-        # TODO add support for negative numbers
+        minimum = max(self._min, minimum or self._min)
+        maximum = min(self._max, maximum or self._max)
+        if minimum > maximum:
+            raise ValueError(f"Minimum is greater than maximum: {minimum} > {maximum}")
         if dividable_by is not None:
             if NumberFactory.is_zero(dividable_by):
-                dividable_by = None
+                dividable_by = self._step
             else:
                 dividable_by = abs(dividable_by)
                 a = int(dividable_by * 10**self._decimals)
@@ -51,18 +71,48 @@ class NumberFactory:
                     raise ValueError(
                         f"Dividable by must be dividable by step: {dividable_by} vs {self._step}"
                     )
-        full_range = abs((maximum or self._max) - (minimum or self._min))
-        while True:
-            value = self.fix(
-                random.random() * full_range + (minimum or self._min), dividable_by
+        else:
+            dividable_by = self._step
+        minimum_start = math.ceil(minimum / dividable_by) * dividable_by
+        maximum_end = math.floor(maximum / dividable_by) * dividable_by
+        full_range = abs(maximum_end - minimum_start)
+        range_int = int(full_range / dividable_by)
+        start_time = time.time()
+        if (
+            not zero_allowed
+            and dividable_by > abs(minimum_start)
+            and dividable_by > abs(maximum_end)
+        ):
+            raise ValueError(
+                f"Dividable by / step must be less than minimum or maximum: {dividable_by} vs [{minimum_start}, {maximum_end}]"
             )
-            while value < (minimum or self._min):
-                value += self._step
-            while value > (maximum or self._max):
-                value -= self._step
+        if minimum_start > maximum_end:
+            raise ValueError(
+                f"Minimum is greater than maximum (modified): {minimum_start} > {maximum_end}"
+            )
+        max_runtime_sec = 0.1
+        while time.time() - start_time < max_runtime_sec:
+            random_in_range = self._random_generator.next_int(range_int)
+            value = minimum_start + random_in_range * dividable_by
+            value_fixed = self.fix(value, dividable_by)
+            if not NumberFactory.is_equal(value, self.fix(value, dividable_by)):
+                raise RuntimeError(
+                    f"Value is not equal to fixed value: {value} vs {value_fixed}"
+                )
+            if value < minimum_start:
+                raise RuntimeError(
+                    f"Value is less than minimum: {value} < {minimum_start} minimum={minimum}"
+                )
+            if value > maximum_end:
+                raise RuntimeError(
+                    f"Value is greater than maximum: {value} > {maximum_end} maximum={maximum}"
+                )
             if not zero_allowed and NumberFactory.is_zero(value):
                 continue
             return self.fix(value)
+        raise RuntimeError(
+            f"Cannot find random value in {max_runtime_sec} second, paramters: minimum={minimum}, maximum={maximum}, dividable_by={dividable_by}, zero_allowed={zero_allowed}"
+        )
 
     @staticmethod
     def is_zero(value: float | None):
@@ -76,7 +126,7 @@ class NumberFactory:
             return True
         if value1 is None or value2 is None:
             return False
-        return abs(value1 - value2) < 1e-8
+        return NumberFactory.is_zero(value1 - value2)
 
     def format(self, value: float | None, decimals: int | None = None) -> str:
         if value is None:
@@ -96,14 +146,20 @@ class NumberFactory:
 
     def fly_back(self, value: float):
         str_value = self.format(value)
-        if value not in self._number_stat:
+        if str_value not in self._number_stat:
             self._number_stat[str_value] = 0
         self._number_stat[str_value] += 1
 
     def print_statistic(self):
-        sorted_stat = dict(
-            sorted(self._number_stat.items(), key=lambda item: item[1], reverse=True)
-        )
-        if self._decimals > 0:
-            sorted_stat = {key: value for key, value in sorted_stat.items()}
-        print("Number stat:", sorted_stat)
+        swapped_stat = {}
+        for k, v in self._number_stat.items():
+            if v not in swapped_stat:
+                swapped_stat[v] = []
+            swapped_stat[v].append(float(k))
+
+        print("Number factory statistic:")
+        for k in sorted(swapped_stat.keys(), reverse=True):
+            v = swapped_stat[k]
+            v.sort()
+            joined_v = ", ".join(map(str, v))
+            print(f"{k:<5} -> {joined_v}")

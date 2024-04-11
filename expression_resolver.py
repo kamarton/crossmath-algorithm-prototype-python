@@ -10,8 +10,10 @@ class ExpressionResolverException(Exception):
         self,
         message: str = "Expression resolver exception",
         expression: Expression | None = None,
+        parent: Exception | None = None,
     ):
-        super().__init__(f"{message} (expression={expression})")
+        super().__init__(f"{message} (expression={expression}, parent={parent})")
+        self._parent = parent
 
 
 class ExpressionResolverNotResolvable(ExpressionResolverException):
@@ -19,8 +21,9 @@ class ExpressionResolverNotResolvable(ExpressionResolverException):
         self,
         message: str = "Expression is not resolvable",
         expression: Expression | None = None,
+        parent: Exception | None = None,
     ):
-        super().__init__(message, expression=expression)
+        super().__init__(message, expression=expression, parent=parent)
 
 
 class ExpressionResolverMaybeNotResolvable(ExpressionResolverException):
@@ -28,21 +31,24 @@ class ExpressionResolverMaybeNotResolvable(ExpressionResolverException):
         self,
         message: str = "Expression is maybe not resolvable",
         expression: Expression | None = None,
+        parent: Exception | None = None,
     ):
-        super().__init__(message, expression=expression)
+        super().__init__(message, expression=expression, parent=parent)
 
 
 class ExpressionResolver:
     def __init__(self, validator: ExpressionValidator, number_factory: NumberFactory):
         self._validator = validator
         self._number_factory = number_factory
-        pass
+        self._maximum_resolve_time_sec = 0.1
 
-    def _fly_back(self, expression: Expression):
-        self._number_factory.fly_back(expression.operand1)
-        self._number_factory.fly_back(expression.operand2)
-        self._number_factory.fly_back(expression.result)
-        pass
+    def _fly_back(self, base: Expression, result: Expression):
+        if base.operand1 is None:
+            self._number_factory.fly_back(result.operand1)
+        if base.operand2 is None:
+            self._number_factory.fly_back(result.operand2)
+        if base.result is None:
+            self._number_factory.fly_back(result.result)
 
     def _fix_result(self, expression: Expression):
         expression.operand1 = self._number_factory.fix(expression.operand1)
@@ -60,7 +66,7 @@ class ExpressionResolver:
     def _resolve_result_is_none(self, expression: Expression) -> Expression:
         start = time.time()
         operators = self._next_operator(expression)
-        while True:
+        while time.time() - start < self._maximum_resolve_time_sec:
             exp_result = expression.clone()
             if exp_result.operator is None:
                 try:
@@ -75,15 +81,27 @@ class ExpressionResolver:
                 exp_result.operand1 = self._number_factory.next()
             if exp_result.operand2 is None:
                 if exp_result.operator == Operator.SUB:
-                    exp_result.operand2 = self._number_factory.next(
-                        maximum=exp_result.operand1
-                    )
+                    try:
+                        exp_result.operand2 = self._number_factory.next(
+                            maximum=exp_result.operand1
+                        )
+                    except ValueError as e:
+                        raise ExpressionResolverNotResolvable(
+                            expression=expression, parent=e
+                        )
                 elif exp_result.operator == Operator.DIV:
-                    exp_result.operand2 = self._number_factory.next(
-                        maximum=exp_result.operand1,
-                        dividable_by=exp_result.operand1,
-                        zero_allowed=False,
-                    )
+                    try:
+                        exp_result.operand2 = self._number_factory.next(
+                            maximum=exp_result.operand1,
+                            dividable_by=exp_result.operand1,
+                            zero_allowed=False,
+                        )
+                    except ValueError as e:
+                        if expression.operator is None:
+                            continue
+                        raise ExpressionResolverNotResolvable(
+                            expression=expression, parent=e
+                        )
                 else:
                     exp_result.operand2 = self._number_factory.next()
             exp_result.result = self._number_factory.fix(
@@ -95,14 +113,14 @@ class ExpressionResolver:
             self._check_result(expression, exp_result)
             if not self._validator.validate(exp_result):
                 # TODO time or count limit
-                time_diff = time.time() - start
-                if time_diff > 1.0:
-                    raise ExpressionResolverMaybeNotResolvable(
-                        message=f"Too slow: {time_diff:.1f}s", expression=expression
-                    )
                 continue
-            self._fly_back(exp_result)
+            self._fly_back(expression, exp_result)
             return exp_result
+
+        time_diff = time.time() - start
+        raise ExpressionResolverMaybeNotResolvable(
+            message=f"Too slow: {time_diff:.1f}s", expression=expression
+        )
 
     def _resolve_only_operator_missing(self, expression: Expression) -> Expression:
         if (
@@ -133,13 +151,13 @@ class ExpressionResolver:
             self._check_result(expression, exp_result)
             if not self._validator.validate(exp_result):
                 continue
-            self._fly_back(exp_result)
+            self._fly_back(expression, exp_result)
             return exp_result
         raise ExpressionResolverNotResolvable(expression=expression)
 
     def _resolve_result_is_available(self, expression: Expression) -> Expression:
         start = time.time()
-        while True:
+        while time.time() - start < self._maximum_resolve_time_sec:
             exp_calc = expression.clone()
             exp_result = expression.clone()
             exp_result.result = expression.result
@@ -174,11 +192,19 @@ class ExpressionResolver:
                 # ? * b = c -> c / b = a
                 exp_calc.operator = Operator.DIV
                 if not_has_operands:
-                    exp_result.operand1 = exp_calc.operand1 = self._number_factory.next(
-                        dividable_by=exp_result.result,
-                        zero_allowed=False,
-                    )
-                    print(exp_calc)
+                    try:
+                        exp_result.operand1 = exp_calc.operand1 = (
+                            self._number_factory.next(
+                                dividable_by=exp_result.result,
+                                zero_allowed=False,
+                            )
+                        )
+                    except ValueError as e:
+                        if expression.operator is None:
+                            continue
+                        raise ExpressionResolverNotResolvable(
+                            expression=expression, parent=e
+                        )
             elif operator == Operator.DIV:
                 # a / b = c
                 if not_has_operands:
@@ -219,14 +245,14 @@ class ExpressionResolver:
 
             if not self._validator.validate(exp_result):
                 # TODO time or count limit
-                time_diff = time.time() - start
-                if time_diff > 1.0:
-                    raise ExpressionResolverMaybeNotResolvable(
-                        message=f"Too slow: {time_diff:.1f}s", expression=expression
-                    )
                 continue
-            self._fly_back(exp_result)
+            self._fly_back(expression, exp_result)
             return exp_result
+
+        time_diff = time.time() - start
+        raise ExpressionResolverMaybeNotResolvable(
+            message=f"Too slow: {time_diff:.1f}s", expression=expression
+        )
 
     def resolve(self, expression: Expression) -> Expression | None:
         start_time = time.time()
