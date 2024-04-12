@@ -109,23 +109,6 @@ def test_positive_numbers():
     assert eq(number_factory.next(minimum=3, maximum=3), 3)
 
 
-def test_is_zero():
-    assert NumberFactory.is_zero(0.0)
-    assert not NumberFactory.is_zero(0.1)
-    assert not NumberFactory.is_zero(-0.1)
-    assert not NumberFactory.is_zero(1.0)
-    assert not NumberFactory.is_zero(-1.0)
-
-
-def test_is_equal():
-    assert NumberFactory.is_equal(0.0, 0.0)
-    assert NumberFactory.is_equal(-0.0001, -0.0001)
-    assert not NumberFactory.is_equal(0.0001, -0.0001)
-    assert not NumberFactory.is_equal(0.0001, 0.00011)
-    # out of precision
-    assert NumberFactory.is_equal(0.0000001, 0.0000002)
-
-
 def test_next_with_minimum_is_greater_than_maximum():
     number_factory = NumberFactory(minimum=1, maximum=10)
     try:
@@ -133,6 +116,7 @@ def test_next_with_minimum_is_greater_than_maximum():
         assert False
     except ValueError as e:
         assert str(e) == "Minimum is greater than maximum: 10 > 1"
+
 
 def test_next_with_dividable_by_is_not_dividable_by_step():
     number_factory = NumberFactory(minimum=0, maximum=29, step=3)
@@ -142,5 +126,5 @@ def test_next_with_dividable_by_is_not_dividable_by_step():
     except ValueError as e:
         assert str(e) == "Dividable by must be dividable by step: 1 vs 3"
 
-# expression_resolver.ExpressionResolverNotResolvable: Expression is not resolvable (expression=None None None = None, parent=Dividable by / step must be less than minimum or maximum: 29.0 vs [0.0, 29.0])
 
+# expression_resolver.ExpressionResolverNotResolvable: Expression is not resolvable (expression=None None None = None, parent=Dividable by / step must be less than minimum or maximum: 29.0 vs [0.0, 29.0])

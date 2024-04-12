@@ -1,9 +1,7 @@
 from enum import Enum
 from typing import TypeVar
 
-import pandas
-
-from number_factory import NumberFactory
+from number_helper import number_is_zero, number_is_equal
 
 Exp = TypeVar("Exp", bound="Expression")
 Opr = TypeVar("Opr", bound="Operator")
@@ -47,20 +45,7 @@ class Expression:
         )
 
     @staticmethod
-    def from_str(exp: str) -> Exp:
-        values = exp.split()
-        result = []
-        for i in range(0, len(values)):
-            if values[i] == "?":
-                result.append(None)
-            elif i % 2 == 0:
-                result.append(float(values[i]))
-            else:
-                result.append(Operator(values[i]))
-        return Expression.from_values(result)
-
-    @staticmethod
-    def from_values(values: list) -> Exp:
+    def from_list(values: list) -> Exp:
         if len(values) not in Expression.SUPPORTED_LENGTHS:
             raise ValueError(
                 f"Invalid values ({len(values)} not in {Expression.SUPPORTED_LENGTHS})"
@@ -99,15 +84,39 @@ class Expression:
     def get_length(self) -> int:
         return self._length
 
+    def is_match(self, exp: Exp, none_allowed: bool = True) -> bool:
+        if not none_allowed:
+            raise ValueError("Not supported")
+        return (
+            (
+                self.operand1 is None
+                or exp.operand1 is None
+                or number_is_equal(self.operand1, exp.operand1)
+            )
+            and (
+                self.operator is None
+                or exp.operator is None
+                or self.operator == exp.operator
+            )
+            and (
+                self.operand2 is None
+                or exp.operand2 is None
+                or number_is_equal(self.operand2, exp.operand2)
+            )
+            and (
+                self.result is None
+                or exp.result is None
+                or number_is_equal(self.result, exp.result)
+            )
+        )
+
 
 class ExpressionValidator:
     def __init__(
         self,
-        number_factory: NumberFactory,
         minimum: float = 0.0,
         maximum: float = 100.0,
     ):
-        self._number_factory: NumberFactory = number_factory
         self._minimum: float = minimum
         self._maximum: float = maximum
 
@@ -139,11 +148,9 @@ class ExpressionValidator:
             return False
         if not self._check_range(expression.result):
             return False
-        if expression.operator == Operator.DIV and NumberFactory.is_zero(
-            expression.operand2
-        ):
+        if expression.operator == Operator.DIV and number_is_zero(expression.operand2):
             return False
-        return NumberFactory.is_equal(
+        return number_is_equal(
             eval(f"{expression.operand1} {expression.operator} {expression.operand2}"),
             expression.result,
         )

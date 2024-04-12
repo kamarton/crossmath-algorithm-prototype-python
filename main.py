@@ -9,7 +9,7 @@ WIDTH = int(os.environ.get("WIDTH", 30))
 HEIGHT = int(os.environ.get("HEIGHT", 30))
 NUMBER_FACTORY_MIN = float(os.environ.get("NUMBER_FACTORY_MIN", -20.0))
 NUMBER_FACTORY_MAX = float(os.environ.get("NUMBER_FACTORY_MAX", 20.0))
-NUMBER_FACTORY_STEP = float(os.environ.get("NUMBER_FACTORY_STEP", 0.5))
+NUMBER_FACTORY_STEP = float(os.environ.get("NUMBER_FACTORY_STEP", 0.1))
 
 if __name__ == "__main__":
     exp_map = ExpressionMap(width=WIDTH, height=HEIGHT)
@@ -19,9 +19,7 @@ if __name__ == "__main__":
         step=NUMBER_FACTORY_STEP,
     )
     resolver = ExpressionResolver(
-        validator=ExpressionValidator(
-            number_factory=number_factory, minimum=-100, maximum=100
-        ),
+        validator=ExpressionValidator(minimum=-100, maximum=100),
         number_factory=number_factory,
     )
     cross_math = CrossMath(

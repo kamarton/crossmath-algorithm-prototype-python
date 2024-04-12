@@ -40,7 +40,12 @@ class DeadPoints:
 
 
 class CrossMath:
-    def __init__(self, exp_map: ExpressionMap, number_factory: NumberFactory, expression_resolver : ExpressionResolver):
+    def __init__(
+        self,
+        exp_map: ExpressionMap,
+        number_factory: NumberFactory,
+        expression_resolver: ExpressionResolver,
+    ):
         self._map = exp_map
         self._number_factory = number_factory
         self._expression_resolver = expression_resolver
@@ -159,7 +164,7 @@ class CrossMath:
                 direction, _x, _y, values = desc
                 try:
                     expression = self._expression_resolver.resolve(
-                        Expression.from_values(values)
+                        Expression.from_list(values)
                     )
                 except ExpressionResolverException as e:
                     print(e)

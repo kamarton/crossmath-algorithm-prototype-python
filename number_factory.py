@@ -2,6 +2,8 @@ import math
 import random
 import time
 
+from number_helper import number_is_zero, number_is_equal, number_fix
+
 
 class RandomGenerator:
     def __init__(self, seed: int = None):
@@ -61,7 +63,7 @@ class NumberFactory:
         if minimum > maximum:
             raise ValueError(f"Minimum is greater than maximum: {minimum} > {maximum}")
         if dividable_by is not None:
-            if NumberFactory.is_zero(dividable_by):
+            if number_is_zero(dividable_by):
                 dividable_by = self._step
             else:
                 dividable_by = abs(dividable_by)
@@ -95,38 +97,24 @@ class NumberFactory:
             random_in_range = self._random_generator.next_int(range_int)
             value = minimum_start + random_in_range * dividable_by
             value_fixed = self.fix(value, dividable_by)
-            if not NumberFactory.is_equal(value, self.fix(value, dividable_by)):
+            if not number_is_equal(value, self.fix(value, dividable_by)):
                 raise RuntimeError(
                     f"Value is not equal to fixed value: {value} vs {value_fixed}"
                 )
-            if value < minimum_start:
+            if number_fix(value) < number_fix(minimum_start):
                 raise RuntimeError(
                     f"Value is less than minimum: {value} < {minimum_start} minimum={minimum}"
                 )
-            if value > maximum_end:
+            if number_fix(value) > number_fix(maximum_end):
                 raise RuntimeError(
                     f"Value is greater than maximum: {value} > {maximum_end} maximum={maximum}"
                 )
-            if not zero_allowed and NumberFactory.is_zero(value):
+            if not zero_allowed and number_is_zero(value):
                 continue
             return self.fix(value)
         raise RuntimeError(
             f"Cannot find random value in {max_runtime_sec} second, paramters: minimum={minimum}, maximum={maximum}, dividable_by={dividable_by}, zero_allowed={zero_allowed}"
         )
-
-    @staticmethod
-    def is_zero(value: float | None):
-        if value is None:
-            return False
-        return abs(0.0 - value) < 1e-6
-
-    @staticmethod
-    def is_equal(value1: float | None, value2: float | None) -> bool:
-        if value1 is None and value2 is None:
-            return True
-        if value1 is None or value2 is None:
-            return False
-        return NumberFactory.is_zero(value1 - value2)
 
     def format(self, value: float | None, decimals: int | None = None) -> str:
         if value is None:
@@ -142,7 +130,7 @@ class NumberFactory:
             raise ValueError(
                 f"Step must be greater than or equal to the factory step: {self._step} vs {step}"
             )
-        return round(round(value / step) * step, self._decimals)
+        return float(round(round(value / step) * step, self._decimals))
 
     def fly_back(self, value: float):
         str_value = self.format(value)
