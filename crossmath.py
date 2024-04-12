@@ -2,12 +2,11 @@ import random
 import time
 from typing import Tuple
 
-from expression import Expression, ExpressionValidator
+from expression import Expression
 from expression_map import (
     ExpressionMap,
     ExpressionItem,
     Direction,
-    ExpressionMapCellValueMissmatch,
 )
 from expression_resolver import (
     ExpressionResolver,
@@ -18,25 +17,18 @@ from number_factory import NumberFactory
 
 class DeadPoints:
     def __init__(self):
-        self._data: dict[Tuple[int, int], list[Direction]] = {}
+        self._dead_set: set[Tuple[int, int, Direction, int]] = set()
 
-    def add(self, x: int, y: int, direction: Direction):
-        if (x, y) not in self._data:
-            self._data[(x, y)] = []
-        self._data[(x, y)].append(direction)
+    def add_path(self, x: int, y: int, direction: Direction, expression_length: int):
+        self._dead_set.add((x, y, direction, expression_length))
 
-    def is_dead(self, x: int, y: int, direction: Direction) -> bool:
-        if (x, y) not in self._data:
-            return False
-        return direction in self._data[(x, y)]
-
-    def is_dead_full(self, x: int, y: int) -> bool:
-        if (x, y) not in self._data:
-            return False
-        return len(self._data[(x, y)]) == len(Direction.all())
+    def is_dead_path(
+        self, x: int, y: int, direction: Direction, expression_length: int
+    ) -> bool:
+        return (x, y, direction, expression_length) in self._dead_set
 
     def clear(self):
-        self._data.clear()
+        self._dead_set.clear()
 
 
 class CrossMath:
@@ -53,9 +45,6 @@ class CrossMath:
 
     def _find_potential_positions(self) -> list[Tuple[int, int]]:
         for point in self._map.get_all_operand_points():
-            x, y = point
-            if self._dead_points.is_dead_full(x, y):
-                continue
             yield point
 
     def _check_expression_frame(
@@ -107,9 +96,13 @@ class CrossMath:
                     values_y_offset = (
                         0 if direction.is_horizontal() else expression_offset
                     )
+                    values_x = x + values_x_offset
+                    values_y = y + values_y_offset
                     for expression_length in Expression.SUPPORTED_LENGTHS:
-                        values_x = x + values_x_offset
-                        values_y = y + values_y_offset
+                        if self._dead_points.is_dead_path(
+                            values_x, values_y, direction, expression_length
+                        ):
+                            continue
                         if not self._check_x_y_overflow(
                             values_x, values_y, expression_length
                         ):
@@ -125,8 +118,6 @@ class CrossMath:
                         )
                         if all([value is not None for value in values]):
                             # already filled
-                            continue
-                        if self._dead_points.is_dead(values_x, values_y, direction):
                             continue
 
                         yield (
@@ -168,7 +159,7 @@ class CrossMath:
                     )
                 except ExpressionResolverException as e:
                     print(e)
-                    self._dead_points.add(_x, _y, direction)
+                    self._dead_points.add_path(_x, _y, direction, len(values))
                     continue
                 expression_item = ExpressionItem(_x, _y, direction, expression)
                 self._map.put(expression_item)
