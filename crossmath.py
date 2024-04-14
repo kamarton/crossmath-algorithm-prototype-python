@@ -1,5 +1,4 @@
 import random
-import time
 from typing import Tuple
 
 from expression import Expression
@@ -8,14 +7,18 @@ from expression_map import (
     ExpressionItem,
     Direction,
 )
-from expression_resolver import (
+from resolver.expression_resolver import (
     ExpressionResolver,
-    ExpressionResolverException,
 )
 from number_factory import NumberFactory
+from resolver.resolver_exceptions import ExpressionResolverException
 
 
 class DeadPoints:
+    """
+    Dead points storage
+    """
+
     def __init__(self):
         self._dead_set: set[Tuple[int, int, Direction, int]] = set()
 

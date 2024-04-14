@@ -16,6 +16,9 @@ class Operator(Enum):
 
     @staticmethod
     def get_operators_without_eq() -> list:
+        """
+        Returns a list of operators without the equal operator.
+        """
         return [Operator.ADD, Operator.SUB, Operator.MUL, Operator.DIV]
 
     def __str__(self):
@@ -37,6 +40,9 @@ class Expression:
         return [self.operand1, self.operator, self.operand2, Operator.EQ, self.result]
 
     def is_empty(self) -> bool:
+        """
+        Returns True if expression is fully empty
+        """
         return (
             self.operator is None
             and self.operand1 is None
@@ -82,6 +88,11 @@ class Expression:
         return f"{self.operand1} {self.operator} {self.operand2} = {self.result}"
 
     def get_length(self) -> int:
+        """
+        Returns the length of the expression
+
+        :return: The length of the expression
+        """
         return self._length
 
     def is_match(self, exp: Exp, none_allowed: bool = True) -> bool:
@@ -157,3 +168,7 @@ class ExpressionValidator:
 
     def _check_range(self, value: float) -> bool:
         return self._minimum <= value <= self._maximum
+
+
+def is_zero_division(operator: Operator, operand2: float) -> bool:
+    return operator == Operator.DIV and number_is_zero(operand2)

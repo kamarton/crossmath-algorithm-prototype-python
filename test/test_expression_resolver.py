@@ -1,7 +1,7 @@
 import parametrize_from_file
 
 from expression import Expression, ExpressionValidator, Operator
-from expression_resolver import ExpressionResolver
+from resolver.expression_resolver import ExpressionResolver
 from number_factory import NumberFactory
 
 

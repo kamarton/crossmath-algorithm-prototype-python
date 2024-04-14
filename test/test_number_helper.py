@@ -1,4 +1,9 @@
-from number_helper import number_is_zero, number_is_equal, number_fix
+from number_helper import (
+    number_is_zero,
+    number_is_equal,
+    number_fix,
+    number_precision_decimals,
+)
 
 
 def test_is_zero():
@@ -21,5 +26,5 @@ def test_is_equal():
 def test_fix():
     assert number_fix(1 / 3) == 0.333333
     # out of precision
-    assert number_fix(0.0000001) == 0.0
-    assert number_fix(0.0000002) == 0.0
+    less_than_precision = 4 * pow(10, -(number_precision_decimals + 1))
+    assert number_fix(less_than_precision) == 0.0

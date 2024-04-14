@@ -3,10 +3,10 @@ import os
 from crossmath import CrossMath
 from expression_map import ExpressionMap
 from number_factory import NumberFactory
-from expression_resolver import ExpressionResolver, ExpressionValidator
+from resolver.expression_resolver import ExpressionResolver, ExpressionValidator
 
-WIDTH = int(os.environ.get("WIDTH", 30))
-HEIGHT = int(os.environ.get("HEIGHT", 30))
+WIDTH = int(os.environ.get("WIDTH", 50))
+HEIGHT = int(os.environ.get("HEIGHT", 50))
 NUMBER_FACTORY_MIN = float(os.environ.get("NUMBER_FACTORY_MIN", -20.0))
 NUMBER_FACTORY_MAX = float(os.environ.get("NUMBER_FACTORY_MAX", 20.0))
 NUMBER_FACTORY_STEP = float(os.environ.get("NUMBER_FACTORY_STEP", 0.1))
