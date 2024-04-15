@@ -1,6 +1,7 @@
 import parametrize_from_file
 
-from expression import Expression, ExpressionValidator, Operator
+from expression import Expression, ExpressionValidator
+from operator_factory import Operator, OperatorFactory
 from resolver.expression_resolver import ExpressionResolver
 from number_factory import NumberFactory
 
@@ -23,9 +24,11 @@ def expression_from_str(exp: str) -> Expression:
 @parametrize_from_file
 def test_expression_resolver(expression: str, expect: str):
     number_factory = NumberFactory(minimum=1.0, maximum=10.0)
+    operator_factory = OperatorFactory()
     resolver = ExpressionResolver(
         validator=ExpressionValidator(),
         number_factory=number_factory,
+        operator_factory=operator_factory,
     )
     parsed_expression = expression_from_str(expression)
     expected_expression = expression_from_str(expect)

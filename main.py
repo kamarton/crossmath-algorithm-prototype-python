@@ -3,6 +3,7 @@ import os
 from crossmath import CrossMath
 from expression_map import ExpressionMap
 from number_factory import NumberFactory
+from operator_factory import OperatorFactory
 from resolver.expression_resolver import ExpressionResolver, ExpressionValidator
 
 WIDTH = int(os.environ.get("WIDTH", 50))
@@ -18,18 +19,24 @@ if __name__ == "__main__":
         maximum=NUMBER_FACTORY_MAX,
         step=NUMBER_FACTORY_STEP,
     )
+    operator_factory = OperatorFactory()
     resolver = ExpressionResolver(
         validator=ExpressionValidator(minimum=-100, maximum=100),
         number_factory=number_factory,
+        operator_factory=operator_factory,
     )
     cross_math = CrossMath(
-        exp_map=exp_map, number_factory=number_factory, expression_resolver=resolver
+        exp_map=exp_map,
+        number_factory=number_factory,
+        expression_resolver=resolver,
+        operator_factory=OperatorFactory(),
     )
     # try:
     cross_math.generate()
     print()
     cross_math.print()
     number_factory.print_statistic()
+    operator_factory.print_statistic()
     # except Exception as e:
     #     print(e)
     # finally:

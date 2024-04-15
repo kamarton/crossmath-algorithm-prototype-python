@@ -4,7 +4,8 @@ from typing import Tuple
 
 import pandas
 
-from expression import Expression, Operator
+from expression import Expression
+from operator_factory import Operator
 from number_factory import NumberFactory
 
 

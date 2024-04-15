@@ -1,28 +1,10 @@
-from enum import Enum
 from typing import TypeVar
 
 from number_helper import number_is_zero, number_is_equal
+from operator_factory import Operator
 
 Exp = TypeVar("Exp", bound="Expression")
 Opr = TypeVar("Opr", bound="Operator")
-
-
-class Operator(Enum):
-    ADD = "+"
-    SUB = "-"
-    MUL = "*"
-    DIV = "/"
-    EQ = "="
-
-    @staticmethod
-    def get_operators_without_eq() -> list:
-        """
-        Returns a list of operators without the equal operator.
-        """
-        return [Operator.ADD, Operator.SUB, Operator.MUL, Operator.DIV]
-
-    def __str__(self):
-        return self.value
 
 
 class Expression:

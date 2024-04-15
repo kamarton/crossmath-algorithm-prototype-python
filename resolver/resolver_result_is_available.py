@@ -1,6 +1,7 @@
 import random
 
-from expression import ExpressionValidator, Expression, Operator, is_zero_division
+from expression import ExpressionValidator, Expression, is_zero_division
+from operator_factory import Operator, OperatorFactory
 from number_factory import NumberFactory
 from resolver.resolver_base import ExpressionResolverBase
 from resolver.resolver_exceptions import (
@@ -11,8 +12,13 @@ from resolver.resolver_exceptions import (
 
 class ResultIsAvailableResolver(ExpressionResolverBase):
 
-    def __init__(self, validator: ExpressionValidator, number_factory: NumberFactory):
-        super().__init__(validator, number_factory)
+    def __init__(
+        self,
+        validator: ExpressionValidator,
+        number_factory: NumberFactory,
+        operator_factory: OperatorFactory,
+    ):
+        super().__init__(validator, number_factory, operator_factory)
         self._resolve_maximum_loop_count = 8
 
     def match(self, expression: Expression) -> bool:
@@ -35,7 +41,7 @@ class ResultIsAvailableResolver(ExpressionResolverBase):
         operator = (
             expression.operator
             if expression.operator is not None
-            else random.choice(Operator.get_operators_without_eq())
+            else self._operator_factory.next_weighted_operator()
         )
         if exp_result.operator is None:
             exp_result.operator = operator

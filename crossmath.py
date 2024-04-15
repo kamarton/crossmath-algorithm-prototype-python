@@ -7,6 +7,7 @@ from expression_map import (
     ExpressionItem,
     Direction,
 )
+from operator_factory import OperatorFactory
 from resolver.expression_resolver import (
     ExpressionResolver,
 )
@@ -20,18 +21,16 @@ class DeadPoints:
     """
 
     def __init__(self):
-        self._dead_set: set[Tuple[int, int, Direction, int]] = set()
+        self._set: set[Tuple] = set()
 
-    def add_path(self, x: int, y: int, direction: Direction, expression_length: int):
-        self._dead_set.add((x, y, direction, expression_length))
+    def append(self, *args):
+        self._set.add(tuple(args))
 
-    def is_dead_path(
-        self, x: int, y: int, direction: Direction, expression_length: int
-    ) -> bool:
-        return (x, y, direction, expression_length) in self._dead_set
+    def exists(self, *args) -> bool:
+        return tuple(args) in self._set
 
     def clear(self):
-        self._dead_set.clear()
+        self._set.clear()
 
 
 class CrossMath:
@@ -39,12 +38,14 @@ class CrossMath:
         self,
         exp_map: ExpressionMap,
         number_factory: NumberFactory,
+        operator_factory: OperatorFactory,
         expression_resolver: ExpressionResolver,
     ):
         self._map = exp_map
         self._number_factory = number_factory
         self._expression_resolver = expression_resolver
         self._dead_points = DeadPoints()
+        self._operator_factory = operator_factory
 
     def _find_potential_positions(self) -> list[Tuple[int, int]]:
         for point in self._map.get_all_operand_points():
@@ -102,7 +103,7 @@ class CrossMath:
                     values_x = x + values_x_offset
                     values_y = y + values_y_offset
                     for expression_length in Expression.SUPPORTED_LENGTHS:
-                        if self._dead_points.is_dead_path(
+                        if self._dead_points.exists(
                             values_x, values_y, direction, expression_length
                         ):
                             continue
@@ -162,7 +163,7 @@ class CrossMath:
                     )
                 except ExpressionResolverException as e:
                     print(e)
-                    self._dead_points.add_path(_x, _y, direction, len(values))
+                    self._dead_points.append(_x, _y, direction, len(values))
                     continue
                 expression_item = ExpressionItem(_x, _y, direction, expression)
                 self._map.put(expression_item)

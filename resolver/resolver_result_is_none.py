@@ -1,6 +1,7 @@
 import random
 
-from expression import ExpressionValidator, Expression, Operator
+from expression import ExpressionValidator, Expression
+from operator_factory import Operator, OperatorFactory
 from number_factory import NumberFactory
 from number_helper import number_is_zero
 from resolver.resolver_base import ExpressionResolverBase
@@ -12,8 +13,13 @@ from resolver.resolver_exceptions import (
 
 class ResultIsNoneResolver(ExpressionResolverBase):
 
-    def __init__(self, validator: ExpressionValidator, number_factory: NumberFactory):
-        super().__init__(validator, number_factory)
+    def __init__(
+        self,
+        validator: ExpressionValidator,
+        number_factory: NumberFactory,
+        operator_factory: OperatorFactory,
+    ):
+        super().__init__(validator, number_factory, operator_factory)
         self._resolve_maximum_loop_count = 8
 
     def match(self, expression: Expression) -> bool:
@@ -80,22 +86,24 @@ class ResultIsNoneResolver(ExpressionResolverBase):
             exp_result.operand2 = self._number_factory.next()
         return True
 
-    @staticmethod
-    def _operators(expression: Expression) -> list[Operator]:
+    def _operators(self, expression: Expression) -> list[Operator]:
         if expression.operator is not None:
             return [expression.operator]
 
-        operators_allowed = Operator.get_operators_without_eq()
+        operators_excludes = []
         if number_is_zero(expression.operand2):
             # ?a ? 0 = c?
             # zero division not allowed
-            operators_allowed.remove(Operator.DIV)
+            operators_excludes.append(Operator.DIV)
 
-        if expression.operand1 is None or expression.operand2 is None:
-            # operands are empty -> all operators allowed
-            yield random.choice(operators_allowed)
+        if expression.operand1 is not None and expression.operand2 is not None:
+            operators_allowed = self._operator_factory.operators_weighted(
+                excludes=operators_excludes
+            )
+            for operator in operators_allowed:
+                yield operator
 
-        # only operator missing, limited choice
-        random.shuffle(operators_allowed)
-        for operator in operators_allowed:
-            yield operator
+        # operands are empty -> all operators allowed
+        yield from self._operator_factory.iter_weighted_operators(
+            excludes=operators_excludes
+        )
